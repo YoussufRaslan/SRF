@@ -1,8 +1,5 @@
-streamlit
-matplotlib
-numpy
-subprocess
-sys
-datetime
-base64
-pathlib
+streamlit>=1.22.0
+pandas>=1.5.0
+matplotlib>=3.6.0
+numpy>=1.23.0
+fpdf2>=2.7.4
