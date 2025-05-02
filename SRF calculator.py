@@ -186,7 +186,7 @@ if st.session_state.composition["Biogenic Waste"]:
     initial_moisture = st.slider(
         "Initial Moisture Content (%)",
         min_value=float(min_moisture),
-        max_value=60.0,
+        max_value=85.0,
         value=float(min_moisture),
         step=0.1,
         format="%.1f"
@@ -483,15 +483,6 @@ try:
     else:
         st.warning("Mercury values exceed Class 5 thresholds")
 
-    # Display classification results
-    st.subheader("SRF Classification (EN 15359)")
-    class_info = f"""
-    - **NCV**: {ncv:.1f} MJ/kg (Class {ncv_class})
-    - **Chlorine**: {cl_percent:.2f}% (Class {cl_class})
-    - **Mercury**: Median={hg_median:.3f} mg/MJ, 80th={hg_80th:.3f} mg/MJ (Class {hg_class})"""
-    
-    st.markdown(class_info)
-
     # Visualization
     st.subheader("📈 SRF Quality Classification")
     class_data = {
@@ -524,6 +515,14 @@ try:
             title='Classification Scale',
             bbox_to_anchor=(1.05, 1), 
             loc='upper left')
+
+    class_info = f"""
+    - **NCV**: {ncv:.1f} MJ/kg (Class {ncv_class})
+    - **Chlorine**: {cl_percent:.2f}% (Class {cl_class})
+    - **Mercury**: Median={hg_median:.3f} mg/MJ, 80th={hg_80th:.3f} mg/MJ (Class {hg_class})"""
+    
+    st.markdown(class_info)
+
 
     plt.tight_layout()
     st.pyplot(fig)
