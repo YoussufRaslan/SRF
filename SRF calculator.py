@@ -195,7 +195,7 @@ else:
     initial_moisture = st.slider(
         "Initial Moisture Content (%)",
         0.0,
-        60.0,
+        85.0,
         25.0,
         step=0.1,
         format="%.1f"
