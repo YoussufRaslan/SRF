@@ -420,7 +420,7 @@ with cols[1]:
     <div style="color: white; font-size: 14px; font-weight: 600; margin-bottom: 8px; margin-top: -15px">
         Energy Equivalent
     </div>
-    <div style="font-size: 20px; font-weight: bold">
+    <div style="font-size: 24px; font-weight: bold; color: white">
         ⛽ {oil_eq:.1f} kg oil<br>
         ⚫ {coal_eq:.1f} kg coal
     </div>
