@@ -1,11 +1,47 @@
 import streamlit as st
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import subprocess
+import sys
+import datetime
+import base64
+from pathlib import Path
+
+try:
+    from fpdf import FPDF
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "fpdf"])
+    from fpdf import FPDF
+
+def img_to_base64(img_path):
+    """Convert image to base64 for HTML embedding"""
+    if Path(img_path).exists():
+        return base64.b64encode(Path(img_path).read_bytes()).decode()
+    st.error(f"Logo image not found at: {img_path}")
+    return None
 
 # Configuration
-st.set_page_config(page_title="SRF Production Calculator", layout="centered")
-st.title("Solid Recovered Fuel (SRF) Production Calculator")
+LOGO_PATH = "sustainability-squad-high-resolution-logo-transparent.png"
+logo_base64 = img_to_base64(LOGO_PATH)
+st.set_page_config(
+    page_title="EcoFuel Pro",
+    page_icon="♻️",
+    layout="centered"
+)
+
+st.markdown(
+    f"""
+    <div style="display: flex; align-items: center; justify-content: center; margin: -30px 0 25px 0;">
+        <img src="data:image/png;base64,{logo_base64}" style="height: 100px; margin-right: 20px;" 
+             onerror="this.style.display='none'">
+        <div style="border-left: 3px solid #4CAF50; padding-left: 20px;">
+            <h1 style="color: #2E7D32; margin: 0 0 5px 0; font-size: 2.5rem;">EcoFuel Pro</h1>
+            <p style="color: #666; margin: 0; font-size: 1.1rem;">SRF Production Analysis Suite</p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # Constants
 EMOJIS = {
@@ -53,7 +89,7 @@ if 'contaminants' not in st.session_state:
         'Mercury_80th': 0.0,
     }
 
-# Updated drying methods database with real-world parameters
+# Drying methods database
 DRYING_METHODS = {  
     "Mechanical Press": {
         "applicable_moisture": (55, 65),
@@ -137,6 +173,115 @@ def create_composition_chart():
     
     ax.axis('equal')
     return fig
+
+# PDF Report Generation
+def create_pdf_report():
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Branded PDF Header
+    try:
+        pdf.image(LOGO_PATH, x=10, y=8, w=35)
+        pdf.set_font('Helvetica', 'B', 18)
+        pdf.set_text_color(46, 125, 50)  # Dark green
+        pdf.set_xy(50, 10)
+        pdf.cell(0, 10, "EcoFuel Pro", ln=1)
+        pdf.set_font('Helvetica', '', 12)
+        pdf.set_text_color(106, 168, 79)  # Light green
+        pdf.set_xy(50, 16)
+        pdf.cell(0, 10, "SRF Production Analysis Report", ln=1)
+        pdf.set_draw_color(106, 168, 79)
+        pdf.line(10, 28, 200, 28)
+        pdf.ln(15)
+    except Exception as e:
+        st.error(f"Could not load logo: {str(e)}")
+
+    # Report Date
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, f"Report Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1)
+    pdf.ln(5)
+
+    # Input Data Section
+    pdf.set_fill_color(230, 240, 255)
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, 'Input Data:', 0, 1, 'L', fill=True)
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, f"Waste Type: {waste_type}", 0, 1)
+    pdf.cell(0, 10, f"Total Waste Mass: {input_mass:.2f} kg", 0, 1)
+
+    # Composition
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.cell(0, 10, 'Waste Composition:', 0, 1)
+    pdf.set_font('Helvetica', '', 12)
+    for component, percentage in st.session_state.composition.items():
+        pdf.cell(0, 10, f"{component}: {percentage:.2f}%", 0, 1)
+    pdf.cell(0, 10, f"Initial Moisture Content: {initial_moisture:.2f}%", 0, 1)
+
+    # Contaminants
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.cell(0, 10, 'Contaminants:', 0, 1)
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, f"Chlorine: {st.session_state.contaminants['Chlorine']:.4f}%", 0, 1)
+    pdf.cell(0, 10, f"Mercury (Median): {st.session_state.contaminants['Mercury_median']:.4f} mg/MJ", 0, 1)
+    pdf.cell(0, 10, f"Mercury (80th): {st.session_state.contaminants['Mercury_80th']:.4f} mg/MJ", 0, 1)
+    pdf.ln(10)
+
+    # Process Configuration
+    pdf.set_fill_color(230, 240, 255)
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, 'Process Configuration:', 0, 1, 'L', fill=True)
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, "Selected Process Steps:", 0, 1)
+    for step in process_flow:
+        pdf.cell(0, 10, f"- {step}", 0, 1)
+    if drying_method_1:
+        pdf.cell(0, 10, f"Primary Drying Method: {drying_method_1}", 0, 1)
+        pdf.cell(0, 10, f"Moisture after primary drying: {intermediate_moisture}%", 0, 1)
+    if drying_method_2:
+        pdf.cell(0, 10, f"Secondary Drying Method: {drying_method_2}", 0, 1)
+        pdf.cell(0, 10, f"Final moisture content: {final_moisture}%", 0, 1)
+    pdf.ln(10)
+
+    # Results
+    pdf.set_fill_color(245, 245, 245)
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, 'Results:', 0, 1, 'L', fill=True)
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, f"Final SRF Mass: {output_mass:.2f} kg", 0, 1)
+    pdf.cell(0, 10, f"Effective Moisture: {effective_moisture:.2f}%", 0, 1)
+    pdf.cell(0, 10, f"Heating Value (HHV): {hhv:.2f} MJ/kg", 0, 1)
+    pdf.cell(0, 10, f"Total Energy: {total_energy:.2f} MJ", 0, 1)
+    pdf.cell(0, 10, f"Coal Equivalent: {coal_eq:.2f} kg", 0, 1)
+    pdf.cell(0, 10, f"Oil Equivalent: {oil_eq:.2f} kg", 0, 1)
+    pdf.ln(10)
+
+    # Classification
+    pdf.set_fill_color(245, 245, 245)
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, 'SRF Classification (EN 15359):', 0, 1, 'L', fill=True)
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, f"Overall Class: {srf_class}", 0, 1)
+    pdf.cell(0, 10, f"NCV: {ncv:.1f} MJ/kg (Class {ncv_class})", 0, 1)
+    pdf.cell(0, 10, f"Chlorine: {cl_percent:.2f}% (Class {cl_class})", 0, 1)
+    pdf.cell(0, 10, f"Mercury: Median={hg_median:.3f} mg/MJ, 80th={hg_80th:.3f} mg/MJ (Class {hg_class})", 0, 1)
+
+    if effective_moisture > 20 or cl_class == 5 or hg_class >= 4 or srf_class >= 4:
+        pdf.set_font('Helvetica', 'B', 12)
+        pdf.set_text_color(255, 0, 0)
+        pdf.cell(0, 10, "Warnings:", 0, 1)
+        pdf.set_font('Helvetica', '', 12)
+        if effective_moisture > 20:
+            pdf.cell(0, 10, "- High moisture content (>20%) may not meet quality standards", 0, 1)
+        if cl_class == 5:
+            pdf.cell(0, 10, "- High chlorine content (>3.0%) may cause corrosion and emissions issues", 0, 1)
+        if hg_class >= 4:
+            pdf.cell(0, 10, "- High mercury content - potential environmental hazard", 0, 1)
+        if srf_class >= 4:
+            pdf.cell(0, 10, "- Low SRF classification (Class 4/5) - may not meet requirements for most applications", 0, 1)
+
+    pdf_file_name = f"SRF_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    pdf.output(pdf_file_name)
+    return pdf_file_name
 
 # Input Section
 st.header("🔢 Input Waste Data")
@@ -239,6 +384,10 @@ st.session_state.contaminants['Mercury_80th'] = st.number_input(
 
 # Processing Section
 st.header("⚙ SRF Production Process Configuration")
+drying_method_1 = None
+drying_method_2 = None
+intermediate_moisture = initial_moisture
+final_moisture = initial_moisture
 
 # Modified process flow based on moisture content
 if initial_moisture < 20:
@@ -336,9 +485,6 @@ with st.expander("⚙ Process Parameters Configuration"):
                     final_moisture = intermediate_moisture
             else:
                 final_moisture = initial_moisture
-        else:
-            drying_method_1 = None
-            drying_method_2 = None
 
 # Calculations
 try:
@@ -390,7 +536,7 @@ try:
     coal_eq = total_energy / 24  # 24 MJ/kg coal
     oil_eq = total_energy / 42   # 42 MJ/kg oil
 
-    #CO2 emissions reduction potential
+    # CO2 emissions reduction potential
     carbon_fraction = 0.65  # Fraction of carbon in SRF According to phyllis
     fossil_carbon_fraction = 0.35  # Fraction of fossil carbon in SRF
     srf_carbon_emissions = output_mass * carbon_fraction * fossil_carbon_fraction * 3.67  # kg CO2/kg C
@@ -412,7 +558,7 @@ with cols[0]:
              delta=f"{-input_mass + output_mass:.1f} kg vs input")
     st.metric("Effective Moisture", f"{effective_moisture:.1f}%")
     if coal_eq > 0:
-        st.metric("CO2 precent reduction",f"{100*(1-srf_carbon_emissions/coal_carbon_emissions):.1f} %",help="CO2 emissions reduction when using SRF instead of coal")
+        st.metric("CO2 percent reduction",f"{100*(1-srf_carbon_emissions/coal_carbon_emissions):.1f} %",help="CO2 emissions reduction when using SRF instead of coal")
 
 with cols[1]:
     st.metric("Heating Value (HHV)", f"{hhv:.1f} MJ/kg")
@@ -523,7 +669,6 @@ try:
     
     st.markdown(class_info)
 
-
     plt.tight_layout()
     st.pyplot(fig)
     srf_class = max(ncv_class , cl_class , hg_class)
@@ -539,6 +684,24 @@ try:
 
 except Exception as e:
     st.error(f"Classification error: {str(e)}")
+
+# Report Generation
+st.markdown("---")
+st.subheader("📄 Generate PDF Report")
+
+if st.button("🖨 Generate Report"):
+    try:
+        report_path = create_pdf_report()
+        
+        with open(report_path, "rb") as f:
+            pdf_bytes = f.read()
+        
+        b64 = base64.b64encode(pdf_bytes).decode()
+        href = f'<a href="data:application/pdf;base64,{b64}" download="{report_path}">⬇️ Download Report</a>'
+        st.markdown(href, unsafe_allow_html=True)
+        st.success("✅ Report generated successfully!")
+    except Exception as e:
+        st.error(f"Error generating report: {str(e)}")
 
 # Footer
 st.markdown("---")
