@@ -53,62 +53,53 @@ if 'contaminants' not in st.session_state:
         'Mercury_80th': 0.0,
     }
 
-# Updated drying methods database with real-world parameters :cite[2]:cite[3]:cite[6]
+# Updated drying methods database with real-world parameters
 DRYING_METHODS = {  
     "Mechanical Press": {
-        "applicable_moisture": (40, 60),
-        "output_moisture": 30,
+        "applicable_moisture": (55, 65),
+        "output_moisture": 40,
         "energy": "Low",
         "speed": "Hours",
         "equation": r"M_{out} = M_{in} \times (1 - 0.25t)",
-        "info": "Mechanical dehydration using presses/screens for initial moisture reduction:cite[2]:cite[3]",
+        "info": "Mechanical dehydration using presses/screens for initial moisture reduction",
         "loss": 0.05
     },
     "Biodrying": {
-        "applicable_moisture": (50, 70),
-        "output_moisture": 25,
+        "applicable_moisture": (35, 55),
+        "output_moisture": 17,
         "energy": "Low",
         "speed": "Days",
         "equation": r"M_{out} = 0.85M_{in} \times e^{-0.1t}",
-        "info": "Biological drying using microbial activity to reduce moisture:cite[8]:cite[9]",
+        "info": "Biological drying using microbial activity to reduce moisture",
         "loss": 0.08
     },
     "Rotary Drum": {
-        "applicable_moisture": (20, 35),
-        "output_moisture": 8,
+        "applicable_moisture": (17,35),
+        "output_moisture": 10,
         "energy": "High",
         "speed": "Hours",
         "equation": r"M_{out} = M_{in} \times (0.65 - 0.04T)",
-        "info": "High-temperature thermal drying for final moisture reduction:cite[2]:cite[6]",
+        "info": "High-temperature thermal drying for final moisture reduction",
         "loss": 0.12
     },
     "Belt Dryer": {
-        "applicable_moisture": (25, 40),
-        "output_moisture": 18,
+        "applicable_moisture": (25, 35),
+        "output_moisture": 15,
         "energy": "Medium",
         "speed": "Days",
         "equation": r"M_{out} = M_{in} \times (0.82 - 0.08v)",
-        "info": "Conveyor belt system with heated zones for moderate drying:cite[2]:cite[3]",
+        "info": "Conveyor belt system with heated zones for moderate drying",
         "loss": 0.06
     },
     "Solar Tunnel": {
-        "applicable_moisture": (30, 45),
-        "output_moisture": 15,
+        "applicable_moisture": (35, 45),
+        "output_moisture": 20,
         "energy": "Very Low",
         "speed": "Days",
         "equation": r"M_{out} = M_{in} \times (0.75 - 0.02t)",
-        "info": "Solar-assisted drying using greenhouse tunnel technology:cite[3]:cite[9]",
+        "info": "Solar-assisted drying using greenhouse tunnel technology",
         "loss": 0.04
     },
-    "Radio Frequency": {
-        "applicable_moisture": (10, 25),
-        "output_moisture": 5,
-        "energy": "Medium",
-        "speed": "Minutes",
-        "equation": r"M_{out} = M_{in} \times (1 - 0.4f)",
-        "info": "Advanced RF technology for precise low-moisture drying:cite[4]",
-        "loss": 0.03
-    }
 }
 
 # Helper functions
@@ -151,6 +142,7 @@ def create_composition_chart():
 st.header("🔢 Input Waste Data")
 waste_type = st.selectbox("Type of Waste", ["Municipal", "Industrial", "Commercial", "Mixed"])
 input_mass = st.number_input("Total Waste Mass (kg)", min_value=0.0, value=0.0, step=100.0)
+
 # Composition Input
 st.header("🧪 Compositional Data")
 cols = st.columns(2)
@@ -188,11 +180,9 @@ with cols[1]:
 
 # Moisture content slider based on Biogenic Waste percentage
 if st.session_state.composition["Biogenic Waste"]:
-    # Calculate minimum moisture as 70% of Biogenic Waste content (capped at 50%)
     min_moisture = 0.7 * st.session_state.composition["Biogenic Waste"]
     if min_moisture > 50:
         min_moisture = 50
-    # Create slider with min=calculated value, default=calculated value
     initial_moisture = st.slider(
         "Initial Moisture Content (%)",
         min_value=float(min_moisture),
@@ -202,7 +192,6 @@ if st.session_state.composition["Biogenic Waste"]:
         format="%.1f"
     )
 else:
-    # Regular slider when no Biogenic Waste
     initial_moisture = st.slider(
         "Initial Moisture Content (%)",
         0.0,
@@ -211,6 +200,11 @@ else:
         step=0.1,
         format="%.1f"
     )
+
+# Moisture check notification
+if initial_moisture < 20:
+    st.info("✅ No drying required. The initial moisture content is already below 20%, which is optimal for SRF production.")
+
 # Chlorine input
 st.subheader("🛑 Contaminants (Optional)")
 st.session_state.contaminants['Chlorine'] = st.number_input(
@@ -246,8 +240,12 @@ st.session_state.contaminants['Mercury_80th'] = st.number_input(
 # Processing Section
 st.header("⚙ SRF Production Process Configuration")
 
-# Process Flow Visualization
-mandatory_steps = ["Presorting", "Primary Shredding", "Mechanical Separation", "Drying"]
+# Modified process flow based on moisture content
+if initial_moisture < 20:
+    mandatory_steps = ["Presorting", "Primary Shredding", "Mechanical Separation"]
+else:
+    mandatory_steps = ["Presorting", "Primary Shredding", "Mechanical Separation", "Drying"]
+
 optional_steps = ["Secondary Shredding"]
 
 # Process Flow Visualization
@@ -285,6 +283,7 @@ flow_html += '</div>'
 # Display the diagram
 st.markdown("### Process Flow Diagram")
 st.markdown(flow_html, unsafe_allow_html=True)
+
 with st.expander("⚙ Process Parameters Configuration"):
     if "Secondary Shredding" in process_flow:
         cols = st.columns(2)
@@ -301,41 +300,45 @@ with st.expander("⚙ Process Parameters Configuration"):
                 case "Rough (>100mm)":
                     shred_loss = 0.008 
             
-            st.caption(f"mass loss: {shred_loss*100:.1f}% ")
+            st.caption(f"Mass loss: {shred_loss*100:.1f}% ")
         drying_col = cols[1]
     else:
         drying_col = st.container()
 
     with drying_col:
-        st.subheader("Primary Drying Method")
-        applicable_methods_1 = [method for method, details in DRYING_METHODS.items() 
-                               if details['applicable_moisture'][0] <= initial_moisture <= details['applicable_moisture'][1]]
-        drying_method_1 = st.selectbox("Select Primary Drying Method", 
-                                     options=applicable_methods_1,
-                                     key="drying_method_1",
-                                     help="Select a drying method applicable to the current moisture content")
-        
-        if drying_method_1:
-            details_1 = DRYING_METHODS[drying_method_1]
-            intermediate_moisture = details_1['output_moisture']
-            st.write(f"Moisture after primary drying: {intermediate_moisture}%")
+        if initial_moisture >= 20:
+            st.subheader("Primary Drying Method")
+            applicable_methods_1 = [method for method, details in DRYING_METHODS.items() 
+                                   if details['applicable_moisture'][0] <= initial_moisture <= details['applicable_moisture'][1]]
+            drying_method_1 = st.selectbox("Select Primary Drying Method", 
+                                         options=applicable_methods_1,
+                                         key="drying_method_1",
+                                         help="Select a drying method applicable to the current moisture content")
             
-            st.subheader("Secondary Drying Method (Optional)")
-            applicable_methods_2 = [method for method, details in DRYING_METHODS.items() 
-                                  if details['applicable_moisture'][0] <= intermediate_moisture <= details['applicable_moisture'][1]]
-            drying_method_2 = st.selectbox("Select Secondary Drying Method", 
-                                         options=applicable_methods_2,
-                                         key="drying_method_2",
-                                         help="Optional second drying method to further reduce moisture")
-            
-            if drying_method_2:
-                details_2 = DRYING_METHODS[drying_method_2]
-                final_moisture = details_2['output_moisture']
-                st.write(f"Final moisture after secondary drying: {final_moisture}%")
+            if drying_method_1:
+                details_1 = DRYING_METHODS[drying_method_1]
+                intermediate_moisture = details_1['output_moisture']
+                st.write(f"Moisture after primary drying: {intermediate_moisture}%")
+                
+                st.subheader("Secondary Drying Method (Optional)")
+                applicable_methods_2 = [method for method, details in DRYING_METHODS.items() 
+                                      if details['applicable_moisture'][0] <= intermediate_moisture <= details['applicable_moisture'][1]]
+                drying_method_2 = st.selectbox("Select Secondary Drying Method", 
+                                             options=applicable_methods_2,
+                                             key="drying_method_2",
+                                             help="Optional second drying method to further reduce moisture")
+                
+                if drying_method_2:
+                    details_2 = DRYING_METHODS[drying_method_2]
+                    final_moisture = details_2['output_moisture']
+                    st.write(f"Final moisture after secondary drying: {final_moisture}%")
+                else:
+                    final_moisture = intermediate_moisture
             else:
-                final_moisture = intermediate_moisture
+                final_moisture = initial_moisture
         else:
-            final_moisture = initial_moisture
+            drying_method_1 = None
+            drying_method_2 = None
 
 # Calculations
 try:
@@ -387,6 +390,14 @@ try:
     coal_eq = total_energy / 24  # 24 MJ/kg coal
     oil_eq = total_energy / 42   # 42 MJ/kg oil
 
+    #CO2 emissions reduction potential
+    carbon_fraction = 0.65  # Fraction of carbon in SRF According to phyllis
+    fossil_carbon_fraction = 0.35  # Fraction of fossil carbon in SRF
+    srf_carbon_emissions = output_mass * carbon_fraction * fossil_carbon_fraction * 3.67  # kg CO2/kg C
+    coal_carbon_emissions = coal_eq * 0.75 * 3.67  # kg CO2/kg C , 0.75 is the carbon fraction in coal
+    co2_reduction = coal_carbon_emissions - srf_carbon_emissions  # kg CO2 reduction
+    st.session_state.co2_reduction = co2_reduction  
+
 except Exception as e:
     st.error(f"Calculation error: {str(e)}")
     output_mass = hhv = total_energy = coal_eq = oil_eq = 0
@@ -400,6 +411,8 @@ with cols[0]:
     st.metric("Final SRF Mass", f"{output_mass:.1f} kg", 
              delta=f"{-input_mass + output_mass:.1f} kg vs input")
     st.metric("Effective Moisture", f"{effective_moisture:.1f}%")
+    if coal_eq > 0:
+        st.metric("CO2 precent reduction",f"{100*(1-srf_carbon_emissions/coal_carbon_emissions):.1f} %",help="CO2 emissions reduction when using SRF instead of coal")
 
 with cols[1]:
     st.metric("Heating Value (HHV)", f"{hhv:.1f} MJ/kg")
@@ -407,7 +420,7 @@ with cols[1]:
     <div style="color: white; font-size: 14px; font-weight: 600; margin-bottom: 8px; margin-top: -15px">
         Energy Equivalent
     </div>
-    <div style="font-size: 24px; font-weight: bold; color: white">
+    <div style="font-size: 20px; font-weight: bold">
         ⛽ {oil_eq:.1f} kg oil<br>
         ⚫ {coal_eq:.1f} kg coal
     </div>
@@ -417,16 +430,16 @@ with cols[1]:
 if effective_moisture > 20:
     st.warning(f"⚠️ High Moisture Content: {effective_moisture:.1f}% exceeds maximum recommended value (20%). "
               "This SRF may not meet quality standards. Consider improving drying efficiency or "
-              "selecting a more effective drying method:cite[3]:cite[7].")
+              "selecting a more effective drying method.")
 
 # SRF Classification according to EN 15359
 try:
     # Calculate Net Calorific Value (NCV)
-    ncv = (hhv * (1 - effective_moisture/100) - 2.443 * (effective_moisture/100)) * 0.95
+    ncv = round((hhv * (1 - effective_moisture/100) - 2.443 * (effective_moisture/100)) * 0.95,2)
     if ncv < 0:
         ncv = 0.0
 
-    # 1. NCV Classification
+    # Classification logic
     if ncv >= 25:
         ncv_class = 1
     elif ncv >= 20:
@@ -438,7 +451,6 @@ try:
     else:
         ncv_class = 5
 
-    # 2. Chlorine Classification
     cl_percent = st.session_state.contaminants['Chlorine']
     if cl_percent <= 0.2:
         cl_class = 1
@@ -451,15 +463,13 @@ try:
     elif cl_percent <= 3.0:
         cl_class = 5
     else:
-        cl_class = 5  # Exceeds class5 threshold
+        cl_class = 5
         st.warning("Chlorine content exceeds 3.0% (Class 5 maximum)")
 
-    # 3. Mercury Classification
     hg_median = st.session_state.contaminants['Mercury_median']
     hg_80th = st.session_state.contaminants['Mercury_80th']
-    hg_class = 5  # Default to lowest class
+    hg_class = 5
 
-    # Check each class from highest to lowest
     if hg_median <= 0.02 and hg_80th <= 0.04:
         hg_class = 1
     elif hg_median <= 0.03 and hg_80th <= 0.06:
@@ -471,56 +481,43 @@ try:
     elif hg_median <= 0.50 and hg_80th <= 1.00:
         hg_class = 5
     else:
-        st.warning("Mercury values exceed Class 5 thresholds (Median >0.50 mg/MJ or 80th percentile >1.00 mg/MJ)")
-
-    # Final SRF class is the highest individual class
-    srf_class = max(ncv_class, cl_class, hg_class)
+        st.warning("Mercury values exceed Class 5 thresholds")
 
     # Display classification results
     st.subheader("SRF Classification (EN 15359)")
     class_info = f"""
-    **Overall Class**: {srf_class}
     - **NCV**: {ncv:.1f} MJ/kg (Class {ncv_class})
     - **Chlorine**: {cl_percent:.2f}% (Class {cl_class})
     - **Mercury**: Median={hg_median:.3f} mg/MJ, 80th={hg_80th:.3f} mg/MJ (Class {hg_class})"""
     
     st.markdown(class_info)
 
-    # Add this code after displaying the classification results (after st.markdown(class_info))
-
-    # SRF Classification Visualization
+    # Visualization
     st.subheader("📈 SRF Quality Classification")
-
-    # Create classification data
     class_data = {
-        'Parameter': ['NCV', 'Chlorine', 'Mercury', 'Overall Class'],
-        'Class': [ncv_class, cl_class, hg_class, srf_class],
-        'Values': [ncv, cl_percent, f"{hg_median:.3f}/{hg_80th:.3f}", srf_class]
+        'Parameter': ['NCV', 'Chlorine', 'Mercury'],
+        'Class': [ncv_class, cl_class, hg_class],
+        'Values': [ncv, cl_percent, f"{hg_median:.3f}/{hg_80th:.3f}"]
     }
 
-    # Create figure
     fig, ax = plt.subplots(figsize=(10, 5))
-    colors = plt.cm.RdYlGn_r(np.linspace(0, 1, 5))  # Red-Yellow-Green reversed
+    colors = plt.cm.RdYlGn_r(np.linspace(0, 1, 5))
 
-    # Plot horizontal bars
     bars = ax.barh(class_data['Parameter'], class_data['Class'], 
                 color=[colors[c-1] for c in class_data['Class']], 
                 edgecolor='black')
 
-    # Add value annotations
     for i, (class_val, value) in enumerate(zip(class_data['Class'], class_data['Values'])):
         ax.text(class_val + 0.1, i, 
                 f"Class {class_val}\n({value})", 
                 va='center', ha='left', fontweight='bold')
 
-    # Customize plot
     ax.set_xlim(0, 5.5)
     ax.set_xticks(range(1,6))
     ax.set_xlabel('Quality Class (1=Best, 5=Worst)')
     ax.set_title('SRF Quality Classification According to EN 15359')
     ax.grid(axis='x', linestyle='--', alpha=0.7)
 
-    # Create legend
     legend_labels = ['Class 1 (Best)', 'Class 2', 'Class 3', 'Class 4', 'Class 5 (Worst)']
     ax.legend(handles=[plt.Rectangle((0,0),1,1, color=colors[i]) for i in range(5)],
             labels=legend_labels,
@@ -530,8 +527,8 @@ try:
 
     plt.tight_layout()
     st.pyplot(fig)
-
-    # Warnings
+    srf_class = max(ncv_class , cl_class , hg_class)
+    
     if cl_class == 5:
         st.warning("⚠️ High Chlorine Content: Exceeds 3.0% (Class 5) - may cause corrosion and emissions issues")
     
@@ -544,10 +541,9 @@ try:
 except Exception as e:
     st.error(f"Classification error: {str(e)}")
 
-
 # Footer
 st.markdown("---")
-st.caption("ℹ Based on CEN/TS 15359 standards for SRF classification:cite[7]")
+st.caption("ℹ Based on CEN/TS 15359 standards for SRF classification")
 st.caption("⚠ Values represent theoretical estimates - actual results may vary")
 
 if st.button("🧹 Reset All Inputs"):
