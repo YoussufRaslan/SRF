@@ -198,7 +198,7 @@ def create_pdf_report():
         pdf.set_xy(50, 10)
         pdf.cell(0, 10, "EcoFuel Pro", ln=1)
         pdf.set_font('Helvetica', '', 12)
-        pdf.set_text_color(1, 38, 11)  # Light green
+        pdf.set_text_color(1, 38, 11)  
         pdf.set_xy(50, 16)
         pdf.cell(0, 10, "SRF Production Analysis Report", ln=1)
         pdf.set_draw_color(106, 168, 79)
