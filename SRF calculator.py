@@ -271,7 +271,6 @@ def create_pdf_report():
     pdf.set_font('Helvetica', 'B', 14)
     pdf.cell(0, 10, 'SRF Classification (EN 15359):', 0, 1, 'L', fill=True)
     pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 10, f"Overall Class: {srf_class}", 0, 1)
     pdf.cell(0, 10, f"NCV: {ncv:.1f} MJ/kg (Class {ncv_class})", 0, 1)
     pdf.cell(0, 10, f"Chlorine: {cl_percent:.2f}% (Class {cl_class})", 0, 1)
     pdf.cell(0, 10, f"Mercury: Median={hg_median:.3f} mg/MJ, 80th={hg_80th:.3f} mg/MJ (Class {hg_class})", 0, 1)
@@ -577,7 +576,7 @@ with cols[1]:
     <div style="color: white; font-size: 14px; font-weight: 600; margin-bottom: 8px; margin-top: -15px">
         Energy Equivalent
     </div>
-    <div style="font-size: 24px; font-weight: bold; color: white">
+    <div style="font-size: 22px; font-weight: bold">
         ⛽ {oil_eq:.1f} kg oil<br>
         ⚫ {coal_eq:.1f} kg coal
     </div>
