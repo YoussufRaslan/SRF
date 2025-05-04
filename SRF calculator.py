@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Youssef Raslan. All rights reserved.
+# Unauthorized use, reproduction, or distribution is strictly prohibited.
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
