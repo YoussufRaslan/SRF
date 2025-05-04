@@ -90,7 +90,7 @@ if 'composition' not in st.session_state:
         "Plastic": 0.0,
         "Paper & Cardboard": 0.0,
         "Textiles": 0.0,
-        "Biogenic Waste": 0.0,
+        "Organic Waste": 0.0,
         "Inert Materials": 0.0,
         "Other Materials": 0.0
     }
