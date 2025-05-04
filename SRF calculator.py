@@ -337,7 +337,7 @@ with cols[1]:
 
 # Moisture content slider based on Organic Waste percentage
 if st.session_state.composition["Organic Waste"]:
-    min_moisture = 0.7 * st.session_state.composition["Biogenic Waste"]
+    min_moisture = 0.7 * st.session_state.composition["Organic Waste"]
     if min_moisture > 50:
         min_moisture = 50
     initial_moisture = st.slider(
