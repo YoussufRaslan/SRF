@@ -61,7 +61,7 @@ EMOJIS = {
     "Plastic": "🧴",
     "Paper & Cardboard": "📦",
     "Textiles": "👕",
-    "Biogenic Waste": "🌿",
+    "Organic Waste": "🌿",
     "Inert Materials": "🪨",
     "Other Materials": "♻",
     "Waste Collection": "🗑️",
@@ -335,8 +335,8 @@ with cols[1]:
                     <h3 style='color:{status_color};'>Total: {total_percentage:.2f}%</h3></div>""",
                 unsafe_allow_html=True)
 
-# Moisture content slider based on Biogenic Waste percentage
-if st.session_state.composition["Biogenic Waste"]:
+# Moisture content slider based on Organic Waste percentage
+if st.session_state.composition["Organic Waste"]:
     min_moisture = 0.7 * st.session_state.composition["Biogenic Waste"]
     if min_moisture > 50:
         min_moisture = 50
