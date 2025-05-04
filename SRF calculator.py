@@ -79,7 +79,7 @@ HHV_VALUES = {
     "Plastic": 36.5,
     "Paper & Cardboard": 15.8,
     "Textiles": 19.2,
-    "Biogenic Waste": 11.3,
+    "Organic Waste": 11.3,
     "Inert Materials": 0.5,
     "Other Materials": 9.7
 }
