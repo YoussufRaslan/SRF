@@ -801,7 +801,7 @@ with cols[0]:
 with cols[1]:
     st.metric("Heating Value (HHV)", f"{hhv:.1f} MJ/kg")
     st.markdown(f"""
-    <div style="color: white; font-size: 14px; font-weight: 600; margin-bottom: 8px; margin-top: -15px">
+    <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px; margin-top: -15px">
         Energy Equivalent
     </div>
     <div style="font-size: 22px; font-weight: bold">

@@ -15,7 +15,7 @@ with col2:
 
 # Introduction section
 st.markdown("""
-<div style='background-color:#f0f2f6; padding:20px; border-radius:10px; margin-bottom:20px;'>
+<div style='padding:20px; border-radius:10px; margin-bottom:20px;'>
 <h3 style='color:#2E7D32;'>♻️ About This Tool</h3>
 <p>Developed by chemical engineering students, this tool helps beginners in environmental engineering with calculations related to <strong>Solid Recovered Fuel (SRF)</strong> production and analysis.</p>
 </div>
@@ -66,7 +66,7 @@ steps = [
 for step in steps:
     with st.container():
         st.markdown(f"""
-        <div style='display:flex; align-items:center; background-color:#f9f9f9; padding:15px; border-radius:10px; margin:5px 0;'>
+        <div style='display:flex; align-items:center; padding:15px; border-radius:10px; margin:5px 0;'>
             <span style='font-size:1.5em; margin-right:15px;'>{step['icon']}</span>
             <div>
                 <strong>{step['title']}</strong><br>
@@ -78,7 +78,7 @@ for step in steps:
 # Final note
 st.markdown("---")
 st.markdown("""
-<div style='text-align:center; padding:20px; background-color:#e8f5e9; border-radius:10px;'>
+<div style='color: white;text-align:center; padding:20px; background-color:#82b886; border-radius:10px;'>
     We hope you enjoy using <strong>EcoFuel Pro</strong> and that it helps you understand SRF production and its environmental benefits! 🌍
 </div>
 """, unsafe_allow_html=True)
