@@ -8,6 +8,8 @@ import sys
 import datetime
 import base64
 from pathlib import Path
+import os
+import tempfile
 
 try:
     from fpdf import FPDF
@@ -60,9 +62,10 @@ st.markdown(
 EMOJIS = {
     "Plastic": "🧴",
     "Paper & Cardboard": "📦",
+    "Metals": "🔩",
     "Textiles": "👕",
     "Organic Waste": "🌿",
-    "Inert Materials": "🪨",
+    "Inert Materials (wood, glass, diapers,...)": "🪨",
     "Other Materials": "♻",
     "Waste Collection": "🗑️",
     "Presorting": "↔️",
@@ -78,9 +81,10 @@ EMOJIS = {
 HHV_VALUES = {
     "Plastic": 36.5,
     "Paper & Cardboard": 15.8,
+    "Metals": 0,
     "Textiles": 19.2,
     "Organic Waste": 11.3,
-    "Inert Materials": 0.5,
+    "Inert Materials (wood, glass, diapers,...)": 0.5,
     "Other Materials": 9.7
 }
 
@@ -89,9 +93,10 @@ if 'composition' not in st.session_state:
     st.session_state.composition = {
         "Plastic": 0.0,
         "Paper & Cardboard": 0.0,
+        "Metals": 0.0,
         "Textiles": 0.0,
         "Organic Waste": 0.0,
-        "Inert Materials": 0.0,
+        "Inert Materials (wood, glass, diapers,...)": 0.0,
         "Other Materials": 0.0
     }
 
@@ -160,20 +165,20 @@ def normalize_composition():
     for component in st.session_state.composition:
         st.session_state.composition[component] *= factor
 
-def create_composition_chart():
+def create_composition_chart(figsize=(8,8)):
     composition = st.session_state.composition
     total = sum(composition.values())
     
     if total == 0:
         return None
     
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=figsize)
     wedges, texts, autotexts = ax.pie(
         composition.values(),
         labels=[f"{k}\n({v:.1f}%)" for k, v in composition.items()],
         autopct='%1.1f%%',
         startangle=90,
-        pctdistance=0.75,
+        pctdistance=0.5,
         labeldistance=1.15,
         wedgeprops={'linewidth': 1, 'edgecolor': 'white'},
         textprops={'fontsize': 9, 'fontweight': 'bold', 'color': 'darkblue'},
@@ -192,18 +197,22 @@ def create_pdf_report():
     pdf = FPDF()
     pdf.add_page()
     
+    # Helper function to remove emojis
+    def remove_emojis(text):
+        return ''.join(char for char in text if char.isascii())
+
     # Branded PDF Header
     try:
         pdf.image(LOGO_PATH, x=10, y=8, w=35)
         pdf.set_font('Helvetica', 'B', 18)
-        pdf.set_text_color(46, 125, 50)  # Dark green
+        pdf.set_text_color(14, 123, 138)  # blue-green
         pdf.set_xy(50, 10)
         pdf.cell(0, 10, "EcoFuel Pro", ln=1)
         pdf.set_font('Helvetica', '', 12)
         pdf.set_text_color(1, 38, 11)  
         pdf.set_xy(50, 16)
-        pdf.cell(0, 10, "SRF Production Analysis Report", ln=1)
-        pdf.set_draw_color(106, 168, 79)
+        pdf.cell(0, 13, "SRF Production Analysis Report", ln=1)
+        pdf.set_draw_color(14, 123, 138)
         pdf.line(10, 28, 200, 28)
         pdf.ln(15)
     except Exception as e:
@@ -211,85 +220,299 @@ def create_pdf_report():
 
     # Report Date
     pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 10, f"Report Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Report Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"), 0, 1)
     pdf.ln(5)
 
-    # Input Data Section
+    # ===== SECTION 1: Input Data =====
     pdf.set_fill_color(230, 240, 255)
     pdf.set_font('Helvetica', 'B', 14)
-    pdf.cell(0, 10, 'Input Data:', 0, 1, 'L', fill=True)
+    pdf.cell(0, 10, '1. Input Data', 0, 1, 'L', fill=True)
     pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 10, f"Waste Type: {waste_type}", 0, 1)
-    pdf.cell(0, 10, f"Total Waste Mass: {input_mass:.2f} kg", 0, 1)
-
-    # Composition
+    
+    # Waste info
+    pdf.cell(0, 10, remove_emojis(f"Waste Type: {waste_type}"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Total Waste Mass: {input_mass:.2f} kg"), 0, 1)
+    
+    # Composition table
     pdf.set_font('Helvetica', 'B', 12)
     pdf.cell(0, 10, 'Waste Composition:', 0, 1)
+    
+    # Table header
+    pdf.set_fill_color(237, 246, 249)  # light blue-green for better contrast
+    pdf.cell(100, 10, "Component", 1, 0, 'C', 1)
+    pdf.cell(40, 10, "Percentage (%)", 1, 1, 'C', 1)
     pdf.set_font('Helvetica', '', 12)
+    
+    
+    # Table rows (without emojis)
     for component, percentage in st.session_state.composition.items():
-        pdf.cell(0, 10, f"{component}: {percentage:.2f}%", 0, 1)
-    pdf.cell(0, 10, f"Initial Moisture Content: {initial_moisture:.2f}%", 0, 1)
-
+        pdf.cell(100, 10, remove_emojis(f"{component}"), 1)
+        pdf.cell(40, 10, f"{percentage:.2f}", 1, 1)
+    
+        # Pie chart - reduced size to 40%
+    try:
+        pie_path = "composition_pie.png"
+        fig = create_composition_chart(figsize=(5, 5))  # Smaller size for PDF
+    
+        if fig:
+            # Adjust the figure to include legends
+            plt.legend(bbox_to_anchor=(1.3, 0.8), loc='upper left')  # Places legend outside the pie
+            fig.savefig(pie_path, bbox_inches='tight', dpi=150, pad_inches=0.5)  # Add padding for legend
+            plt.close(fig)
+        
+        pdf.set_font('Helvetica', 'B', 12)
+        pdf.ln(5)
+        pdf.cell(0, 10, "Composition Distribution:", 0, 1)
+        pdf.set_font('Helvetica', '', 12)
+        
+        # Center the pie chart with adjusted dimensions to accommodate legend
+        pie_width = 120 # Reduced width to make space for legend
+        x_pos = (pdf.w - pie_width) / 2
+        pdf.image(pie_path, x=x_pos, w=pie_width)
+        
+        # Clean up temp file 
+        if os.path.exists(pie_path):
+            os.remove(pie_path)
+    except Exception as e:
+        st.error(f"Error generating pie chart: {str(e)}")
+    
+    pdf.ln(5)
+    pdf.cell(0, 10, remove_emojis(f"Initial Moisture Content: {initial_moisture:.2f}%"), 0, 1)
+    
     # Contaminants
-    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_font('Helvetica', 'BU', 12)
     pdf.cell(0, 10, 'Contaminants:', 0, 1)
     pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 10, f"Chlorine: {st.session_state.contaminants['Chlorine']:.4f}%", 0, 1)
-    pdf.cell(0, 10, f"Mercury (Median): {st.session_state.contaminants['Mercury_median']:.4f} mg/MJ", 0, 1)
-    pdf.cell(0, 10, f"Mercury (80th): {st.session_state.contaminants['Mercury_80th']:.4f} mg/MJ", 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Chlorine: {st.session_state.contaminants['Chlorine']:.4f}%"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Mercury (Median): {st.session_state.contaminants['Mercury_median']:.4f} mg/MJ"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Mercury (80th): {st.session_state.contaminants['Mercury_80th']:.4f} mg/MJ"), 0, 1)
     pdf.ln(10)
 
-    # Process Configuration
+    # ===== SECTION 2: Process Configuration =====
+    # Ensure section starts on new page
+    if pdf.get_y() > 150:
+        pdf.add_page()
+    
     pdf.set_fill_color(230, 240, 255)
     pdf.set_font('Helvetica', 'B', 14)
-    pdf.cell(0, 10, 'Process Configuration:', 0, 1, 'L', fill=True)
+    pdf.cell(0, 10, '2. Process Configuration', 0, 1, 'L', fill=True)
     pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 10, "Selected Process Steps:", 0, 1)
-    for step in process_flow:
-        pdf.cell(0, 10, f"- {step}", 0, 1)
-    if drying_method_1:
-        pdf.cell(0, 10, f"Primary Drying Method: {drying_method_1}", 0, 1)
-        pdf.cell(0, 10, f"Moisture after primary drying: {intermediate_moisture}%", 0, 1)
-    if drying_method_2:
-        pdf.cell(0, 10, f"Secondary Drying Method: {drying_method_2}", 0, 1)
-        pdf.cell(0, 10, f"Final moisture content: {final_moisture}%", 0, 1)
-    pdf.ln(10)
-
-    # Results
-    pdf.set_fill_color(245, 245, 245)
-    pdf.set_font('Helvetica', 'B', 14)
-    pdf.cell(0, 10, 'Results:', 0, 1, 'L', fill=True)
-    pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 10, f"Final SRF Mass: {output_mass:.2f} kg", 0, 1)
-    pdf.cell(0, 10, f"Effective Moisture: {effective_moisture:.2f}%", 0, 1)
-    pdf.cell(0, 10, f"Heating Value (HHV): {hhv:.2f} MJ/kg", 0, 1)
-    pdf.cell(0, 10, f"Total Energy: {total_energy:.2f} MJ", 0, 1)
-    pdf.cell(0, 10, f"Coal Equivalent: {coal_eq:.2f} kg", 0, 1)
-    pdf.cell(0, 10, f"Oil Equivalent: {oil_eq:.2f} kg", 0, 1)
-    pdf.ln(10)
-
-    # Classification
-    pdf.set_fill_color(245, 245, 245)
-    pdf.set_font('Helvetica', 'B', 14)
-    pdf.cell(0, 10, 'SRF Classification (EN 15359):', 0, 1, 'L', fill=True)
-    pdf.set_font('Helvetica', '', 12)
-    pdf.cell(0, 10, f"NCV: {ncv:.1f} MJ/kg (Class {ncv_class})", 0, 1)
-    pdf.cell(0, 10, f"Chlorine: {cl_percent:.2f}% (Class {cl_class})", 0, 1)
-    pdf.cell(0, 10, f"Mercury: Median={hg_median:.3f} mg/MJ, 80th={hg_80th:.3f} mg/MJ (Class {hg_class})", 0, 1)
-
-    if effective_moisture > 20 or cl_class == 5 or hg_class >= 4 or srf_class >= 4:
+    
+    # Process Flow Diagram
+    try:
         pdf.set_font('Helvetica', 'B', 12)
-        pdf.set_text_color(255, 0, 0)
-        pdf.cell(0, 10, "Warnings:", 0, 1)
+        pdf.cell(0, 10, "Process Flow Diagram:", 0, 1)
         pdf.set_font('Helvetica', '', 12)
+        # Create process flow visualization
+        flow_path = "process_flow.png"
+        fig, ax = plt.subplots(figsize=(12, 3))  # Taller for better text visibility
+        ax.axis('off')
+        
+        # Calculate positions
+        n_steps = len(process_flow)
+        step_width = 1.0 / n_steps
+        
+        # Draw process blocks and arrows
+        for i, step in enumerate(process_flow):
+            # Remove emojis for PDF
+            clean_step = remove_emojis(step)
+            
+            # Calculate block width - 10% wider than text
+            text_width = len(clean_step) * 0.1  # Approximate character width
+            block_width = 0.75 * min(max(text_width * 1.1, 0.1), 0.2)  
+            
+            # Draw block
+            x = i * step_width+ (step_width - block_width)/2
+            rect = plt.Rectangle((x, 0.3), block_width, 0.4, 
+                                fill=True, color='#4a8bc9', alpha=0.8)
+            ax.add_patch(rect)
+            
+            # Add text - wrap long text
+            if len(clean_step) > 15:
+                parts = clean_step.split()
+                if len(parts) > 1:
+                    mid = len(parts) // 2
+                    wrapped_text = "\n".join([" ".join(parts[:mid]), " ".join(parts[mid:])])
+                else:
+                    wrapped_text = clean_step
+            else:
+                wrapped_text = clean_step
+                
+            ax.text(x + block_width/2, 0.5, wrapped_text, 
+                   ha='center', va='center', color='white', fontweight='bold', fontsize=14)
+            
+            # Draw arrow if not last step
+            if i < n_steps - 1:
+                arrow_start = x + block_width
+                arrow_end = (i+1) * step_width + (step_width - block_width)/2
+                arrow_length = arrow_end - arrow_start
+                ax.arrow(arrow_start, 0.5, arrow_length*0.8, 0, 
+                        head_width=0.1, head_length=arrow_length*0.2, 
+                        fc='k', ec='k', linewidth=1)
+        
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.tight_layout()
+        plt.savefig(flow_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        
+        # Add to PDF - center the diagram
+        flow_width = 190
+        x_flow = (pdf.w - flow_width) / 2
+        pdf.image(flow_path, x=x_flow, w=flow_width)
+        
+        # Clean up temp file
+        if os.path.exists(flow_path):
+            os.remove(flow_path)
+    except Exception as e:
+        st.error(f"Error generating process diagram: {str(e)}")
+    
+    # Drying methods
+    pdf.ln(5)
+    if drying_method_1:
+        pdf.cell(0, 10, remove_emojis(f"Primary Drying Method: {drying_method_1}"), 0, 1)
+        pdf.cell(0, 10, remove_emojis(f"Moisture after primary drying: {intermediate_moisture}%"), 0, 1)
+    if drying_method_2:
+        pdf.cell(0, 10, remove_emojis(f"Secondary Drying Method: {drying_method_2}"), 0, 1)
+        pdf.cell(0, 10, remove_emojis(f"Final moisture content: {final_moisture}%"), 0, 1)
+    
+    # ===== SECTION 3: Results =====
+    # Ensure section starts on new page
+    if pdf.get_y() > 150:
+        pdf.add_page()
+    
+    pdf.set_fill_color(230, 240, 255)
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, '3. Production Results', 0, 1, 'L', fill=True)
+    pdf.set_font('Helvetica', '', 12)
+    
+    # Mass and moisture
+    pdf.set_font('Helvetica', 'BU', 12)
+    pdf.cell(0, 10, 'Mass Balance:', 0, 1)
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, remove_emojis(f"Input Mass: {input_mass:.2f} kg"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Final SRF Mass: {output_mass:.2f} kg"), 0, 1)
+    
+    # Fix division by zero error
+    mass_loss = input_mass - output_mass
+    if input_mass > 0:
+        mass_loss_percent = (mass_loss / input_mass) * 100
+    else:
+        mass_loss_percent = 0.0
+        
+    pdf.cell(0, 10, remove_emojis(f"Mass Loss: {mass_loss:.2f} kg ({mass_loss_percent:.1f}%)"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Effective Moisture: {effective_moisture:.1f}%"), 0, 1)
+    
+    # Energy results
+    pdf.ln(5)
+    pdf.set_font('Helvetica', 'BU', 12)
+    pdf.cell(0, 10, 'Energy Characteristics:', 0, 1)
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(0, 10, remove_emojis(f"Heating Value (HHV): {hhv:.2f} MJ/kg"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Total Energy: {total_energy:.2f} MJ"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Coal Equivalent: {coal_eq:.2f} kg"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"Oil Equivalent: {oil_eq:.2f} kg"), 0, 1)
+    
+    # CO2 avoided
+    pdf.ln(5)
+    pdf.set_font('Helvetica','BU', 12)
+    pdf.cell(0, 10, 'Environmental Impact:', 0, 1)
+    pdf.set_font('Helvetica', '', 12)
+    
+    # Handle cases where values might be undefined
+    if 'co2_avoided' in st.session_state:
+        co2_red = st.session_state.co2_avoided
+    else:
+        co2_red = 0.0
+        
+    if coal_carbon_emissions > 0:
+        co2_percent = 100 * (1 - srf_carbon_emissions/coal_carbon_emissions)
+    else:
+        co2_percent = 0.0
+        
+    pdf.cell(0, 10, remove_emojis(f"CO2 Avoided: {co2_red:.2f} kg CO2"), 0, 1)
+    pdf.cell(0, 10, remove_emojis(f"CO2 Avoided Percentage: {co2_percent:.1f}%"), 0, 1)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.cell(0, 10, remove_emojis("Note: Avoided emissions when substituting coal with SRF"), 0, 1)
+    
+    # ===== SECTION 4: Classification =====
+    # Ensure section starts on new page
+    if pdf.get_y() > 150:
+        pdf.add_page()
+    
+    pdf.set_fill_color(230, 240, 255)
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, '4. SRF Classification (EN 15359)', 0, 1, 'L', fill=True)
+    
+    # Classification table
+    pdf.ln(5)
+    pdf.set_fill_color(237, 246, 249)
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.cell(60, 10, "Parameter", 1, 0, 'C', 1)
+    pdf.cell(40, 10, "Value", 1, 0, 'C', 1)
+    pdf.cell(40, 10, "Class", 1, 1, 'C', 1)
+    
+    pdf.set_font('Helvetica', '', 12)
+    pdf.cell(60, 10, remove_emojis("Net Calorific Value (NCV)"), 1)
+    pdf.cell(40, 10, f"{ncv:.1f} MJ/kg", 1)
+    pdf.cell(40, 10, str(ncv_class), 1, 1)
+    
+    pdf.cell(60, 10, "Chlorine", 1)
+    pdf.cell(40, 10, f"{cl_percent:.4f}%", 1)
+    pdf.cell(40, 10, str(cl_class), 1, 1)
+    
+    pdf.cell(60, 10, "Mercury (Median)", 1)
+    pdf.cell(40, 10, f"{hg_median:.4f} mg/MJ", 1)
+    pdf.cell(40, 10, str(hg_class), 1, 1)
+    
+    pdf.cell(60, 10, "Mercury (80th)", 1)
+    pdf.cell(40, 10, f"{hg_80th:.4f} mg/MJ", 1)
+    pdf.cell(40, 10, str(hg_class), 1, 1)
+    
+    pdf.ln(5)
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.cell(0, 10, remove_emojis(f"Overall SRF Classification: Class {srf_class}"), 0, 1)
+    
+    # Warnings
+    warning_exists = False
+    if effective_moisture > 20 or cl_class == 5 or hg_class >= 4 or srf_class >= 4:
+        warning_exists = True
+        # Ensure warnings start on new page
+        if pdf.get_y() > 150:
+            pdf.add_page()
+            
+        pdf.ln(5)
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.cell(0, 10, '5. Warnings', 0, 1, 'L')
+        pdf.set_font('Helvetica', '', 12)
+        
+        # Warning formatting with yellow background
+        pdf.set_fill_color(255, 255, 0)  # Yellow background
+        pdf.set_text_color(0, 0, 0)       # Black text
+        
         if effective_moisture > 20:
-            pdf.cell(0, 10, "- High moisture content (>20%) may not meet quality standards", 0, 1)
+            pdf.cell(0, 10, remove_emojis("- High moisture content (>20%) may not meet quality standards"), 0, 1, fill=True)
+            pdf.ln(2)
         if cl_class == 5:
-            pdf.cell(0, 10, "- High chlorine content (>3.0%) may cause corrosion and emissions issues", 0, 1)
+            pdf.cell(0, 10, remove_emojis("- High chlorine content (>3.0%) may cause corrosion and emissions issues"), 0, 1, fill=True)
+            pdf.ln(2)
         if hg_class >= 4:
-            pdf.cell(0, 10, "- High mercury content - potential environmental hazard", 0, 1)
+            pdf.cell(0, 10, remove_emojis("- High mercury content - potential environmental hazard"), 0, 1, fill=True)
+            pdf.ln(2)
         if srf_class >= 4:
-            pdf.cell(0, 10, "- Low SRF classification (Class 4/5) - may not meet requirements for most applications", 0, 1)
+            pdf.cell(0, 10, remove_emojis("- Low SRF classification (Class 4/5) - may not meet requirements for most applications"), 0, 1, fill=True)
+            pdf.ln(2)
+        
+        # Reset colors to default
+        pdf.set_fill_color(255, 255, 255)
+        pdf.set_text_color(0, 0, 0)
+
+    # Footer at bottom of last page
+    pdf.set_y(-50)
+    pdf.set_font('Helvetica', 'I', 10)
+    pdf.cell(0, 10, remove_emojis("Generated by EcoFuel Pro - SRF Production Analysis Suite"), 0, 1, 'C')
+    pdf.cell(0, 10, remove_emojis("Based on CEN/TS 15359 standards for SRF classification"), 0, 1, 'C')
+    pdf.cell(0, 10, remove_emojis("Values represent theoretical estimates - actual results may vary"), 0, 1, 'C')
 
     pdf_file_name = f"SRF_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     pdf.output(pdf_file_name)
@@ -510,9 +733,11 @@ try:
     mass *= 0.97
     
     # Mechanical Separation (only if secondary shredding enabled)
+    #########!!!!!
+
     if "Secondary Shredding" in process_flow:
         mass *= (1 - shred_loss)
-    
+
     # Drying Process
     current_moisture = initial_moisture
     if drying_method_1:
@@ -548,13 +773,13 @@ try:
     coal_eq = total_energy / 24  # 24 MJ/kg coal
     oil_eq = total_energy / 42   # 42 MJ/kg oil
 
-    # CO2 emissions reduction potential
+    # Potentially avoided CO2 emissions
     carbon_fraction = 0.65  # Fraction of carbon in SRF According to phyllis
     fossil_carbon_fraction = 0.35  # Fraction of fossil carbon in SRF
-    srf_carbon_emissions = output_mass * carbon_fraction * fossil_carbon_fraction * 3.67  # kg CO2/kg C
-    coal_carbon_emissions = coal_eq * 0.75 * 3.67  # kg CO2/kg C , 0.75 is the carbon fraction in coal
-    co2_reduction = coal_carbon_emissions - srf_carbon_emissions  # kg CO2 reduction
-    st.session_state.co2_reduction = co2_reduction  
+    srf_carbon_emissions = output_mass * carbon_fraction * fossil_carbon_fraction * 3.67  # kg CO₂/kg C
+    coal_carbon_emissions = coal_eq * 0.75 * 3.67  # kg CO₂/kg C , 0.75 is the carbon fraction in coal
+    co2_avoided = coal_carbon_emissions - srf_carbon_emissions  # kg CO₂ avoided
+    st.session_state.co2_avoided = co2_avoided  
 
 except Exception as e:
     st.error(f"Calculation error: {str(e)}")
@@ -570,7 +795,8 @@ with cols[0]:
              delta=f"{-input_mass + output_mass:.1f} kg vs input")
     st.metric("Effective Moisture", f"{effective_moisture:.1f}%")
     if coal_eq > 0:
-        st.metric("CO2 percent reduction",f"{100*(1-srf_carbon_emissions/coal_carbon_emissions):.1f} %",help="CO2 emissions reduction when using SRF instead of coal")
+        st.metric("CO₂ Avoided (%)",f"{100*(1-srf_carbon_emissions/coal_carbon_emissions):.1f} %",
+                  help="CO₂ emissions avoided when using SRF instead of coal")
 
 with cols[1]:
     st.metric("Heating Value (HHV)", f"{hhv:.1f} MJ/kg")
