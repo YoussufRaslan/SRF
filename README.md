@@ -7,6 +7,8 @@ team members:
 5. Youssef Osama  
 6. Youssef Raslan
 
+link for app: https://srf-app.streamlit.app/
+
 Copyright (c) 2025 Youssef Raslan (GitHub: @YoussufRaslan).  
 All rights reserved.
 
